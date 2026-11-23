@@ -1,3 +1,4 @@
+import hashlib
 from langchain_community.document_loaders import TextLoader, DirectoryLoader
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
@@ -20,7 +21,7 @@ llm = ChatOpenAI(model = "gpt-4o-mini")
 embedder = OpenAIEmbeddings(model = "text-embedding-3-small", dimensions=1024)
 
 # load the docs from source
-loader = DirectoryLoader(path = Path("../data/processed/").as_posix(),
+loader = DirectoryLoader(path = Path("data/processed/").as_posix(),
     loader_cls = TextLoader,
     show_progress=True)
 
@@ -33,10 +34,12 @@ chunks = chunker.split_documents(docs)
 # vector store
 vs = Chroma(collection_name="rag_demo",
             embedding_function=embedder,
-            persist_directory=Path("../saved-embeddings").as_posix())
+            persist_directory=Path("saved-embeddings").as_posix())
 
 # add docs
-vs.add_documents(chunks)
+
+ids = [hashlib.md5(c.page_content.encode()).hexdigest() for c in chunks]
+vs.add_documents(chunks, ids=ids)
 
 # create the retriever
 retriever = vs.as_retriever(search_kwargs = {"k":3})
