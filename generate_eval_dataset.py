@@ -37,7 +37,7 @@ for golden in dataset.goldens:
     )
     dataset.add_test_case(test_case = test_case)
 
-dataset.goldens = []
+# dataset.goldens = [] -> non duplicate golden in eval dataset
 # save the dataset along with test cases
 dataset.save_as(file_type="json",
 directory=EVALUATION_DATA_DIR.as_posix(),
