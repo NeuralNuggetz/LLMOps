@@ -8,10 +8,12 @@ from pathlib import Path
 load_dotenv()
 
 #define paths
-ROOT_PATH = Path(__file__).parent
-DATASET_DIR = ROOT_PATH/"datasets"
-DOCS_PATH = ROOT_PATH/"data/processed"
+ROOT_PATH = Path(__file__).resolve().parent.parent.parent
+DOCS_PATH = ROOT_PATH/"data" / "processed"
+GOLDENS_DIR = ROOT_PATH / "data" / "evaluation" / "goldens"
 
+#create the directory
+GOLDENS_DIR.mkdir(exist_ok=True, parents=True)
 
 def get_docs_path(directory_path: Path| str) -> list[str]:
     directory_path = Path(directory_path)
@@ -38,9 +40,11 @@ evolution_config = EvolutionConfig(
 
 context_config = ContextConstructionConfig(
     critic_model="gpt-4o-mini",
-    max_contexts_per_document=2,
+    max_contexts_per_document=1,
     context_quality_threshold=0.7,
-    max_retries=2
+    max_retries=2,
+    chunk_size=300,
+    chunk_overlap=30
 )
 
 # create the synthesizer
@@ -54,16 +58,14 @@ synthesizer = Synthesizer(
 #generate the goldens 
 goldens = synthesizer.generate_goldens_from_docs(
     document_paths = get_docs_path(DOCS_PATH),
-    max_goldens_per_context=3,
+    max_goldens_per_context=1,
     context_construction_config=context_config
 )
 
 # save the goldens
 #make the goldens directory
-GOLDENS_DIR = DATASET_DIR/"goldens"
-GOLDENS_DIR.mkdir(exist_ok=True, parents=True)
 synthesizer.save_as(
     file_type='json',
     directory=GOLDENS_DIR.as_posix(),
-    file_name="golden_dataset"
+    file_name="golden_dataset_final"
 )

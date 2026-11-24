@@ -1,8 +1,9 @@
+from langchain_core.callbacks import file
 from deepeval.dataset.dataset import EvaluationDataset
 from deepeval.test_case.llm_test_case import LLMTestCase
 from dotenv import load_dotenv
 from pathlib import Path
-from rag_workflow import graph
+from src.app.rag_workflow import graph
 from time import sleep
 
 
@@ -10,24 +11,23 @@ from time import sleep
 load_dotenv()
 
 # create paths
-ROOT_DIR = Path(__file__).parent
+ROOT_DIR = Path(__file__).resolve().parent.parent.parent
 
-GOLDENS_PATH = ROOT_DIR/"datasets"/"goldens"/"golden_dataset.json"
-EVALUATION_DATA_DIR = GOLDENS_PATH.parent.parent / "eval_dataset"
+GOLDENS_PATH = ROOT_DIR/"datasets"/"goldens"/"golden_dataset_final.json"
+EVALUATION_DATA_DIR = ROOT_DIR / "data" / "evaluation" / "eval_dataset"
 
 # create dir
 EVALUATION_DATA_DIR.mkdir(exist_ok=True, parents=True)
 
 # evaluation dataset
-dataset = EvaluationDataset()
+golden_dataset = EvaluationDataset()
+golden_dataset.add_goldens_from_jsonl_file(file_path=GOLDENS_PATH)
 
-# add goldens to dataset
-dataset.add_goldens_from_json_file(
-    file_path=GOLDENS_PATH
-)
+# dataset to hold produced test cases
+eval_dataset = EvaluationDataset()
 
 # invoke our application
-for golden in dataset.goldens:
+for golden in golden_dataset.goldens:
     final_state = graph.invoke({"query": golden.input})
     test_case = LLMTestCase(
         input=golden.input,
@@ -35,12 +35,12 @@ for golden in dataset.goldens:
         expected_output = golden.expected_output,
         retrieval_context=[doc.page_content for doc in final_state.get("retrieved_docs")]
     )
-    dataset.add_test_case(test_case = test_case)
+    eval_dataset.add_test_case(test_case = test_case)
 
 # dataset.goldens = [] -> non duplicate golden in eval dataset
 # save the dataset along with test cases
-dataset.save_as(file_type="json",
-directory=EVALUATION_DATA_DIR.as_posix(),
-file_name="evaluation_dataset",
+eval_dataset.save_as(file_type="json",
+directory=EVALUATION_DATA_DIR,
+file_name="evaluation_dataset_final",
 include_test_cases=True
 )

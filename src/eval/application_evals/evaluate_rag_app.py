@@ -1,4 +1,3 @@
-from geopandas.io import file
 from deepeval.metrics import (
     GEval,
     AnswerRelevancyMetric,
@@ -28,9 +27,7 @@ recall = ContextualRecallMetric(model = model)
 precision = ContextualPrecisionMetric(model = model)
 contextual_relevancy = ContextualRelevancyMetric(model = model)
 answer_relevancy = AnswerRelevancyMetric(model = model)
-faithfulness = FaithfulnessMetric(truths_extraction_limit=5,
-                                penalize_ambiguous_claims=True,
-                                model=model)
+faithfulness = FaithfulnessMetric(model=model)
 
 # define the custom metrics
 simple_explanation = GEval(
@@ -52,8 +49,8 @@ simple_explanation = GEval(
 )
 
 # define the dataset path
-ROOT_DIR = Path(__file__).parent
-DATASET_PATH = ROOT_DIR / "datasets" / "eval_dataset" / "evaluation_dataset.json"
+ROOT_DIR = Path(__file__).resolve().parent.parent.parent.parent
+DATASET_PATH = ROOT_DIR / "data" / "evaluation" / "eval_dataset" / "evaluation_dataset_final.json"
 
 if DATASET_PATH.exists():
     # load the dataset
@@ -83,5 +80,5 @@ if DATASET_PATH.exists():
             async_config=AsyncConfig(throttle_value=3,
                                     max_concurrent=5),
             display_config=DisplayConfig(results_folder=(ROOT_DIR / "evaluation_results").as_posix(),
-            file_output_dir=(ROOT_DIR / "evaluation_report").as_posix())
+            file_output_dir=(ROOT_DIR / "reports" / "evaluation_report").as_posix())
             )

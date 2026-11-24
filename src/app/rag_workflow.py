@@ -15,31 +15,66 @@ from dotenv import load_dotenv
 # load t he api keys
 load_dotenv()
 
+REPO_ROOT =Path(__file__).resolve().parent.parent.parent
+PROCESSED_TRANSCRIPTS_DIR = REPO_ROOT / "data" / "processed"
+VECTOR_STORE_DIR = REPO_ROOT / "saved-embeddings"
+
+
 # create the llm and embedding model
 llm = ChatOpenAI(model = "gpt-4o-mini")
 
 embedder = OpenAIEmbeddings(model = "text-embedding-3-small", dimensions=1024)
 
-# load the docs from source
-loader = DirectoryLoader(path = Path("data/processed/").as_posix(),
-    loader_cls = TextLoader,
+chunk_size = 300
+chunk_overlap = 30
+
+# load and update knowledge base
+def upsert_documents(chunk_size: int, chunk_overlap: int):
+    # load the docs from source
+    loader = DirectoryLoader(path = PROCESSED_TRANSCRIPTS_DIR.as_posix(),
+    loader_cls=TextLoader,
     show_progress=True)
 
-docs = loader.load()
+    # load the docs
+    docs = loader.load()
 
-# chunk the text
-chunker = RecursiveCharacterTextSplitter(chunk_size = 500, chunk_overlap = 50)
-chunks = chunker.split_documents(docs)
+    # chunk the text, sized in tokens (o200k_base match th gpt-5 model family)
+    # to mirror DeepEval's contextcontruction config chunk sizing
+    chunker = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
+        encoding_name="o200k_base",
+        chunk_size = chunk_size,
+        chunk_overlap = chunk_overlap
+    )
 
-# vector store
-vs = Chroma(collection_name="rag_demo",
-            embedding_function=embedder,
-            persist_directory=Path("saved-embeddings").as_posix())
+    chunks = chunker.split_documents(docs)
 
-# add docs
+    # vector store
+    vs = Chroma(collection_name="rag_demo",
+                embedding_function=embedder,
+                persist_directory=Path("saved-embeddings").as_posix())
 
-ids = [hashlib.md5(c.page_content.encode()).hexdigest() for c in chunks]
-vs.add_documents(chunks, ids=ids)
+    # add docs
+    # no duplicate data in database
+    # ids = [hashlib.md5(c.page_content.encode()).hexdigest() for c in chunks] 
+    # vs.add_documents(chunks, ids=ids)
+    vs.add_documents(chunks)
+    return vs
+
+
+def load_knowledge_base():
+    #vector store
+    vs = Chroma(collection_name="rag_demo",
+                embedding_function=embedder,
+                persist_directory=VECTOR_STORE_DIR.as_posix())
+
+    return vs
+
+
+if VECTOR_STORE_DIR.exists():
+    vs = load_knowledge_base()
+
+else:
+    vs = upsert_documents(chunk_size, chunk_overlap)
 
 # create the retriever
 retriever = vs.as_retriever(search_kwargs = {"k":3})
