@@ -1,3 +1,4 @@
+from app.load_system_prompt import langfuse
 import hashlib
 from langchain_community.document_loaders import TextLoader, DirectoryLoader
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
@@ -9,8 +10,16 @@ from langgraph.graph import StateGraph, START, END
 from typing import TypedDict
 from langchain_core.output_parsers import StrOutputParser
 from pathlib import Path
+from langfuse import get_client
 from dotenv import load_dotenv
 
+langfuse = get_client()
+
+system_prompt = langfuse.get_prompt(
+    name = "rag_app_system_prompt",
+    type="text",
+    label="staging"
+)
 
 # load t he api keys
 load_dotenv()
@@ -96,10 +105,20 @@ def retrieve(state: RAGState) -> dict:
     context = "\n\n".join([doc.page_content for doc in retrieved_docs])
     return {"retrieved_docs": retrieved_docs, "context": context}
 
+#  using langfuse for system prompt
+'''
 def augmentation(state:RAGState)-> dict:
     prompt = ChatPromptTemplate.from_messages([
         ("system", """You are a helpful assistant. Answer the user query
                     based on the given context only.  If you do not know the answer say I don't know. Do not add any preamble to the response"""),
+        ("human", "context: {context}\n\nquery: {query}")
+    ])
+    return {"prompt": prompt}
+'''
+
+def augmentation(state:RAGState)-> dict:
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", system_prompt.prompt),
         ("human", "context: {context}\n\nquery: {query}")
     ])
     return {"prompt": prompt}
