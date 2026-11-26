@@ -3,69 +3,85 @@ from deepeval.synthesizer.config import EvolutionConfig, FiltrationConfig, Conte
 from deepeval.synthesizer.types import Evolution
 from dotenv import load_dotenv
 from pathlib import Path
+from config.paramenter_config import params_config
+
+# load golden dataset params
+golden_params = params_config.golden_dataset
 
 # load the api keys
 load_dotenv()
 
-#define paths
-ROOT_PATH = Path(__file__).resolve().parent.parent.parent
-DOCS_PATH = ROOT_PATH/"data" / "processed"
-GOLDENS_DIR = ROOT_PATH / "data" / "evaluation" / "goldens"
+def generate_golden_dataset():
 
-#create the directory
-GOLDENS_DIR.mkdir(exist_ok=True, parents=True)
+    #define paths
+    ROOT_PATH = Path(__file__).resolve().parent.parent.parent
+    DOCS_PATH = ROOT_PATH/"data" / "processed"
+    GOLDENS_DIR = ROOT_PATH / "data" / "evaluation" / "goldens"
 
-def get_docs_path(directory_path: Path| str) -> list[str]:
-    directory_path = Path(directory_path)
-    if directory_path.exists():
-        paths = directory_path.glob("*.txt")
-    return [path.as_posix() for path in paths]
+    #create the directory
+    GOLDENS_DIR.mkdir(exist_ok=True, parents=True)
 
-# create the configs
-filtration_config = FiltrationConfig(
-    synthetic_input_quality_threshold=0.6,
-    max_quality_retries=2,
-    critic_model = "gpt-4o-mini"
-)
+    def get_docs_path(directory_path: Path| str) -> list[str]:
+        directory_path = Path(directory_path)
+        if directory_path.exists():
+            paths = directory_path.glob("*.txt")
+        return [path.as_posix() for path in paths]
 
-evolution_config = EvolutionConfig(
-    num_evolutions=2,
-    evolutions={
-        Evolution.MULTICONTEXT: 0.1,
-        Evolution.CONCRETIZING: 0.3,
-        Evolution.CONSTRAINED: 0.4,
-        Evolution.COMPARATIVE:0.2
-    }
-)
 
-context_config = ContextConstructionConfig(
-    critic_model="gpt-4o-mini",
-    max_contexts_per_document=1,
-    context_quality_threshold=0.7,
-    max_retries=2,
-    chunk_size=300,
-    chunk_overlap=30
-)
+    # load the config parameters
+    filteration_params = golden_params.filtration_config
+    context_construction_params = golden_params.context_construction_config
+    evolution_params = golden_params.evolution_config
 
-# create the synthesizer
-synthesizer = Synthesizer(
-    model = "gpt-4o-mini",
-    max_concurrent=100,
-    filtration_config=filtration_config,
-    evolution_config=evolution_config
-)
+    # create the configs
+    filtration_config = FiltrationConfig(
+        synthetic_input_quality_threshold=filteration_params.filtration_threshold,
+        max_quality_retries=filteration_params.max_quality_retries,
+        critic_model = filteration_params.filtration_critic_model
+    )
 
-#generate the goldens 
-goldens = synthesizer.generate_goldens_from_docs(
-    document_paths = get_docs_path(DOCS_PATH),
-    max_goldens_per_context=1,
-    context_construction_config=context_config
-)
+    evolution_config = EvolutionConfig(
+        num_evolutions=evolution_params.num_evolutions,
+        evolutions={
+            Evolution.MULTICONTEXT: evolution_params.evolutions["multicontext"],
+            Evolution.CONCRETIZING: evolution_params.evolutions["concretizing"],
+            Evolution.CONSTRAINED: evolution_params.evolutions["constrained"],
+            Evolution.COMPARATIVE: evolution_params.evolutions["comparative"]
+        }
+    )
 
-# save the goldens
-#make the goldens directory
-synthesizer.save_as(
-    file_type='json',
-    directory=GOLDENS_DIR.as_posix(),
-    file_name="golden_dataset_final"
-)
+
+    context_config = ContextConstructionConfig(
+            critic_model=context_construction_params.context_critic_model,
+            max_contexts_per_document=context_construction_params.max_contexts_per_document,
+            context_quality_threshold=context_construction_params.context_threshold,
+            max_retries=context_construction_params.max_context_retries,
+            chunk_size=context_construction_params.context_chunk_size,
+            chunk_overlap=context_construction_params.context_chunk_overlap
+        )
+
+    # create the synthesizer
+    synthesizer = Synthesizer(
+        model = golden_params.dataset_model,
+        max_concurrent=100,
+        filtration_config=filtration_config,
+        evolution_config=evolution_config
+    )
+
+    #generate the goldens 
+    goldens = synthesizer.generate_goldens_from_docs(
+        document_paths = get_docs_path(DOCS_PATH),
+        max_goldens_per_context=golden_params.max_goldens_per_context,
+        context_construction_config=context_config
+    )
+
+    # save the goldens
+    #make the goldens directory
+    synthesizer.save_as(
+        file_type='json',
+        directory=GOLDENS_DIR.as_posix(),
+        file_name=golden_params.golden_dataset_filename
+    )
+
+if __name__ == "__main__":
+    generate_golden_dataset()

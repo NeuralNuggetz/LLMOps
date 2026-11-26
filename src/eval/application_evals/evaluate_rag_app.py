@@ -48,37 +48,41 @@ simple_explanation = GEval(
     # verbose_mode=True
 )
 
-# define the dataset path
-ROOT_DIR = Path(__file__).resolve().parent.parent.parent.parent
-DATASET_PATH = ROOT_DIR / "data" / "evaluation" / "eval_dataset" / "evaluation_dataset_final.json"
+def evaluate_app():
+    # define the dataset path
+    ROOT_DIR = Path(__file__).resolve().parent.parent.parent.parent
+    DATASET_PATH = ROOT_DIR / "data" / "evaluation" / "eval_dataset" / "evaluation_dataset_final.json"
 
-if DATASET_PATH.exists():
-    # load the dataset
-    dataset = EvaluationDataset()
+    if DATASET_PATH.exists():
+        # load the dataset
+        dataset = EvaluationDataset()
 
-    # load the test cases
-    dataset.add_test_cases_from_json_file(
-        file_path=DATASET_PATH,
-        input_key_name="input",
-        actual_output_key_name="actual_output",
-        expected_output_key_name="expected_output",
-        retrieval_context_key_name="retrieval_context"
-    )
+        # load the test cases
+        dataset.add_test_cases_from_json_file(
+            file_path=DATASET_PATH,
+            input_key_name="input",
+            actual_output_key_name="actual_output",
+            expected_output_key_name="expected_output",
+            retrieval_context_key_name="retrieval_context"
+        )
 
-    # store the test cases in a list
-    test_cases = dataset.test_cases
+        # store the test cases in a list
+        test_cases = dataset.test_cases
 
-    #evaluate the dataset
-    evaluate(test_cases=test_cases,
-    metrics=[recall,
-            precision,
-            answer_relevancy,
-            faithfulness,
-            contextual_relevancy,
-            answer_relevancy,
-            simple_explanation],
-            async_config=AsyncConfig(throttle_value=3,
-                                    max_concurrent=5),
-            display_config=DisplayConfig(results_folder=(ROOT_DIR / "evaluation_results").as_posix(),
-            file_output_dir=(ROOT_DIR / "reports" / "evaluation_report").as_posix())
-            )
+        #evaluate the dataset
+        evaluate(test_cases=test_cases,
+        metrics=[recall,
+                precision,
+                answer_relevancy,
+                faithfulness,
+                contextual_relevancy,
+                answer_relevancy,
+                simple_explanation],
+                async_config=AsyncConfig(throttle_value=3,
+                                        max_concurrent=5),
+                display_config=DisplayConfig(results_folder=(ROOT_DIR / "evaluation_results").as_posix(),
+                file_output_dir=(ROOT_DIR / "reports" / "evaluation_report").as_posix())
+                )
+
+if __name__ == "__main__":
+    evaluate_app()
