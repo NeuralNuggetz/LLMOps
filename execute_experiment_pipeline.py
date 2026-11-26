@@ -9,6 +9,8 @@ import mlflow
 import logging
 from logging import INFO
 from dotenv import load_dotenv
+import dagshub
+import json
 
 load_dotenv()
 ROOT_DIR = Path(__file__).parent
@@ -91,8 +93,10 @@ def return_code_files():
     return [file.as_posix() for file in [app_code_path, eval_data_path, evaluation_path, golden_dataset_path]]
 
 if __name__ == "__main__":
+    dagshub.init(repo_owner='vermadhanraj015', repo_name='LLMOps', mlflow=True)
+
     # set the tracking server
-    mlflow.set_tracking_uri("http://127.0.0.1:5000/")
+    mlflow.set_tracking_uri("https://dagshub.com/vermadhanraj015/LLMOps.mlflow")
 
     # set the experiment name
     mlflow.set_experiment("rag-app")
@@ -161,3 +165,7 @@ if __name__ == "__main__":
     for code_file in code_file:
         mlflow.log_artifact(code_file, "code")
     logger.info("code files logged")
+
+    # set tag for the run
+    mlflow.set_tag("stage", "baseline")
+    mlflow.set_tag("phase", "noise_threshold")
