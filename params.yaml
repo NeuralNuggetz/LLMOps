@@ -1,6 +1,6 @@
 # application parameters
 rag_app:
-  prompt_label: production
+  prompt_label: staging
   llm: gpt-5-mini
   embedding_model: text-embedding-3-large
   embedding_dimensions: 3072

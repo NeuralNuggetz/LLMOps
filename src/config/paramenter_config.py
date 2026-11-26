@@ -1,6 +1,6 @@
 import yaml
 from pathlib import Path
-from config.config_types import Params
+from .config_types import Params
 
 
 # define the paths
