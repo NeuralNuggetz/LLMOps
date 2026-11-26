@@ -1,14 +1,30 @@
+from deepeval.metrics.arena_g_eval.utils import FormattedArenaTestCase
+from distro import name
 from langchain_core.callbacks import file
 from deepeval.dataset.dataset import EvaluationDataset
 from deepeval.test_case.llm_test_case import LLMTestCase
 from dotenv import load_dotenv
 from pathlib import Path
 from src.app.rag_workflow import graph
+from logging import getLogger, StreamHandler, Formatter, INFO
 from time import sleep
 
 
 # load the api keys
 load_dotenv()
+
+# create the loger
+logger = getLogger(name="Dataset Logger")
+
+# add stream handler
+handler = StreamHandler()
+logger.addHandler(handler)
+logger.setLevel(INFO)
+
+#add formatter
+formatter = Formatter(fmt="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+handler.setFormatter(fmt=formatter)
+
 
 # create paths
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent
@@ -27,7 +43,7 @@ golden_dataset.add_goldens_from_jsonl_file(file_path=GOLDENS_PATH)
 eval_dataset = EvaluationDataset()
 
 # invoke our application
-for golden in golden_dataset.goldens:
+for count, golden in enumerate(golden_dataset.goldens,1):
     final_state = graph.invoke({"query": golden.input})
     test_case = LLMTestCase(
         input=golden.input,
@@ -36,6 +52,7 @@ for golden in golden_dataset.goldens:
         retrieval_context=[doc.page_content for doc in final_state.get("retrieved_docs")]
     )
     eval_dataset.add_test_case(test_case = test_case)
+    logger.log(level=INFO, msg=f"Added test case no. {count}")
 
 # dataset.goldens = [] -> non duplicate golden in eval dataset
 # save the dataset along with test cases
