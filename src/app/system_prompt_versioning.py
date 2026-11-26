@@ -11,15 +11,14 @@ output_dimensions = 1024
 k=5
 
 system_prompt = """You are a helpful assistant. Answer the user query
-                    based on the given context only.  If you do not know the answer say I don't know. Do not add any preamble to the response. Respond back in simple language and keep a persona of a mentor that is solving doubts of his students. Your answer should have a personal feeling to them."""
+                    based on the given context only.  If you do not know the answer say I don't know. Do not add any preamble to the response. Aways try to answer in simple language. Make sure your answer sticks to the input and the available context and try to make you r answers correct"""
 
 
 # add system prompt to langfuse
 
 langfuse = get_client()
 
-# comment code for update checking
-"""
+
 created_prompt = langfuse.create_prompt(
     name="rag_app_system_prompt",
     type = "text",
@@ -37,11 +36,13 @@ created_prompt = langfuse.create_prompt(
 print(created_prompt.prompt)
 print(created_prompt.version)
 print(created_prompt.labels)
-"""
+
 
 # you can update label
+'''
 langfuse.update_prompt(
     name = "rag_app_system_prompt",
     version=2,
     new_labels = ["production"]
 )
+'''
