@@ -1,6 +1,7 @@
 from data.generate_eval_dataset import generate_evaluation_dataset
 from eval.application_evals.evaluate_rag_app import evaluate_app
 from config.paramenter_config import params_config
+from mlflow_utils import log_run_info
 from pathlib import Path
 from langfuse import get_client
 from typing import Literal
@@ -113,59 +114,69 @@ if __name__ == "__main__":
     formatter = logging.Formatter(fmt="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     handler.setFormatter(fmt=formatter)
 
-    # get all the params
-    all_params = params_config.model_dump()
-    params_dict = flatten_params(all_params)
+
+    with mlflow.start_run() as run:
+
+        # get all the params
+        all_params = params_config.model_dump()
+        params_dict = flatten_params(all_params)
+        
+        mlflow.log_param(params_dict)
+        logger.info("Parameters Logged")
+
+        # generat evaluation data
+        generate_evaluation_dataset()
+        logger.info("evaluation dataset created")
+
+        # run the eval pipeline
+        evaluate_app()
+        logger.info("evaluation complete")
+
+
+        # paths for latest reports
+        result_dir = ROOT_DIR/ "reports"/ "evaluation_results"
+        report_dir = ROOT_DIR/ "reports"/ "evaluation_report"
+
+        # get the latest files after eval pipeline
+        result_file = (result_dir / get_latest_result(result_dir)).as_posix() + ".json"
+        report_file = (result_dir / get_latest_result(report_dir)).as_posix() + ".md"
+
+        # log the result
+        mlflow.log_artifact(result_file, "results")
+        mlflow.log_artifact(report_file, "report")
+
+        logger.info("Results and Report logged")
+
+        # log the metrics
+        metrics = get_merics_from_results(result_file)
+        mlflow.log_metric(metrics)
+        logger.info("Metrics Logged")
+
+        # log the system prompt
+        system_prompt = import_system_prompt(params_config.rag_app.prompt_label)
+        mlflow.log_text(system_prompt, artifact_file="system_prompt.txt")
+
+        # log the dataset
+        eval_dataset_artifact = artifact_name(artifact_type="eval_dataset", artifact_dir="eval_dataset")
+        golden_dataset_artifact = artifact_name(artifact_type="golden_datset", artifact_dir="golden_dataset")
+        mlflow.log_artifact(eval_dataset_artifact[0], eval_dataset_artifact[1])
+        mlflow.log_artifact(golden_dataset_artifact[0], golden_dataset_artifact[1])
+        logger.info("logged evaluation and golden datasets")
+
+        #log the code files
+        code_files = return_code_files()
+
+        for code_file in code_file:
+            mlflow.log_artifact(code_file, "code")
+        logger.info("code files logged")
+
+        # set tag for the run
+        mlflow.set_tag("stage", "baseline")
+        mlflow.set_tag("phase", "noise_threshold")
+
+    # extract info from run
+    run_id = run.info.run_id
+    run_name = run.info.run_name
     
-    mlflow.log_param(params_dict)
-    logger.info("Parameters Logged")
-
-    # generat evaluation data
-    generate_evaluation_dataset()
-    logger.info("evaluation dataset created")
-
-    # run the eval pipeline
-    evaluate_app()
-    logger.info("evaluation complete")
-
-
-    # paths for latest reports
-    result_dir = ROOT_DIR/ "reports"/ "evaluation_results"
-    report_dir = ROOT_DIR/ "reports"/ "evaluation_report"
-
-    # get the latest files after eval pipeline
-    result_file = (result_dir / get_latest_result(result_dir)).as_posix() + ".json"
-    report_file = (result_dir / get_latest_result(report_dir)).as_posix() + ".md"
-
-    # log the result
-    mlflow.log_artifact(result_file, "results")
-    mlflow.log_artifact(report_file, "report")
-
-    logger.info("Results and Report logged")
-
-    # log the metrics
-    metrics = get_merics_from_results(result_file)
-    mlflow.log_metric(metrics)
-    logger.info("Metrics Logged")
-
-    # log the system prompt
-    system_prompt = import_system_prompt(params_config.rag_app.prompt_label)
-    mlflow.log_text(system_prompt, artifact_file="system_prompt.txt")
-
-    # log the dataset
-    eval_dataset_artifact = artifact_name(artifact_type="eval_dataset", artifact_dir="eval_dataset")
-    golden_dataset_artifact = artifact_name(artifact_type="golden_datset", artifact_dir="golden_dataset")
-    mlflow.log_artifact(eval_dataset_artifact[0], eval_dataset_artifact[1])
-    mlflow.log_artifact(golden_dataset_artifact[0], golden_dataset_artifact[1])
-    logger.info("logged evaluation and golden datasets")
-
-    #log the code files
-    code_files = return_code_files()
-
-    for code_file in code_file:
-        mlflow.log_artifact(code_file, "code")
-    logger.info("code files logged")
-
-    # set tag for the run
-    mlflow.set_tag("stage", "baseline")
-    mlflow.set_tag("phase", "noise_threshold")
+    # log to json file
+    log_run_info(run_id, run_name)
