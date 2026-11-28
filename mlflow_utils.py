@@ -1,6 +1,15 @@
 import mlflow
 import json
 from pathlib import Path
+import dagshub
+
+
+
+dagshub.init(repo_owner='vermadhanraj015', repo_name='LLMOps', mlflow=True)
+
+    # set the tracking server
+mlflow.set_tracking_uri("https://dagshub.com/vermadhanraj015/LLMOps.mlflow")
+
 
 # set paths for the json file
 
@@ -22,3 +31,12 @@ def log_run_info(run_id:str, run_name: str):
     with open(JSON_FILE_PATH, "w") as file:
         json.dump(historical_runs,file, indent=4)
     
+def get_metrics_from_runs(tag_name: str, experiment_id:str):
+    searched_runs = mlflow.search_runs(experiment_ids=[experiment_id], filter_string=f"tags.phase = '{tag_name}'", output_format="list")
+
+    all_metrics = []
+    for run in searched_runs:
+        metrics_dict = run.data.metrics
+        all_metrics.append(metrics_dict)
+
+    return all_metrics
